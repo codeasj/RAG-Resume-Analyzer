@@ -1,224 +1,163 @@
 # RAG Resume Analyzer
 
-An AI-powered resume analyzer built with a full RAG (Retrieval-Augmented Generation) pipeline. Upload your resume PDF and paste a job description — get a match score, skill gap analysis, and actionable improvement suggestions.
+RAG Resume Analyzer is a Next.js app that compares a resume PDF against a job description and returns a match score, strong points, missing skills, and resume improvement suggestions.
 
----
+The app uses semantic resume chunking, OpenAI embeddings, Pinecone retrieval, and a Gemini or OpenAI chat model for the final analysis.
 
 ## Live Demo
 
-- **App:** [https://rag-resume-analyzer-ashy.vercel.app/]
+App: https://rag-resume-analyzer-ashy.vercel.app/
 
----
+## What It Does
 
-## How It Works
+1. Upload a resume PDF
+2. Extract text from the PDF on the server
+3. Split the resume into meaningful sections such as Skills, Experience, Projects, and Education
+4. Convert those sections into embeddings
+5. Store them in Pinecone under a unique session namespace
+6. Expand the job description into multiple search queries
+7. Retrieve the most relevant resume chunks
+8. Ask the LLM for a structured analysis
+9. Delete the Pinecone session data after the result is returned
 
-```
-Resume PDF uploaded
-      ↓
-pdf-parse → extracts raw text
-      ↓
-Semantic Chunking → splits by resume sections (Skills, Experience, Projects, Education)
-      ↓
-OpenAI Embeddings → converts each chunk to 1536-dimensional vector
-      ↓
-Pinecone → stores vectors under unique session namespace
-      ↓
-Job Description pasted → Multi-Query Retrieval
-      ↓
-LLM generates 3 search queries from JD → each searches Pinecone in parallel
-      ↓
-Deduplicated chunks → injected into LangChain prompt
-      ↓
-Gemini / OpenAI → generates structured JSON analysis
-      ↓
-Session vectors deleted from Pinecone
-      ↓
-Result shown — score, strong points, missing skills, suggestions
-```
+## Main Features
 
----
-
-## Features
-
-- **PDF Resume Upload** — text extracted via pdf-parse, no manual copy-paste
-- **Semantic Chunking** — resume split by sections (Skills, Experience, Projects, Education) not arbitrary character count — preserves meaning for better retrieval
-- **Multi-Query Retrieval** — LLM generates 3 search queries from JD, each searches Pinecone in parallel, results deduplicated — higher recall than single query
-- **Match Score** — 0-10 score with color coding (green/yellow/red)
-- **Skill Gap Analysis** — specific missing skills from JD
-- **Actionable Suggestions** — specific resume improvements, not generic advice
-- **Provider Switch** — Gemini (default, free) or OpenAI via env variable
-- **Session Isolation** — each analysis uses a unique Pinecone namespace
-- **Auto Cleanup** — vectors deleted after analysis, nothing stored permanently
-
----
+1. PDF upload with server side parsing using `pdf-parse`
+2. Semantic chunking instead of fixed character splitting
+3. Multi query retrieval for better recall
+4. Pinecone namespacing so one analysis stays isolated from another
+5. Automatic cleanup after analysis
+6. Support for Gemini or OpenAI as the analysis model
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router + API Routes)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS + Shadcn UI
-- **AI Orchestration:** LangChain
-- **Embeddings:** OpenAI text-embedding-ada-002 (1536 dimensions)
-- **Vector DB:** Pinecone (cosine similarity)
-- **LLM:** Google Gemini / OpenAI GPT-4o-mini
-- **PDF Parsing:** pdf-parse
-- **Form Validation:** React Hook Form + Zod
-
----
-
-## RAG Pipeline Detail
-
-### 1. Semantic Chunking
-```
-Traditional: "...React TypeScript Mo | ngoDB Express..." ← cuts mid-word
-Semantic:    "SKILLS: React, TypeScript, MongoDB..."     ← full section intact
-```
-Detects section headers (SKILLS, EXPERIENCE, PROJECTS, EDUCATION) using regex. Falls back to paragraph splitting if no headers detected.
-
-### 2. Embeddings
-```
-"SKILLS: React, TypeScript" → [0.23, 0.87, 0.12, ...] (1536 numbers)
-"Frontend Engineer needed"  → [0.24, 0.85, 0.11, ...] (similar = related)
-```
-Similar meaning produces similar vectors. Pinecone finds them via cosine similarity.
-
-### 3. Multi-Query Retrieval
-```
-Single query:  JD → 1 search → might miss relevant sections
-Multi-query:   JD → LLM generates 3 queries → parallel search → deduplicate
-               Better coverage, higher recall
-```
-
-### 4. Cleanup
-```
-After analysis → Pinecone namespace deleted
-No resume data stored permanently
-Cost efficient, privacy friendly
-```
-
----
+Framework: Next.js 16  
+Language: TypeScript  
+Styling: Tailwind CSS and shadcn style UI components  
+AI orchestration: LangChain  
+Embeddings: OpenAI `text-embedding-ada-002`  
+Vector database: Pinecone  
+LLM: Gemini or OpenAI  
+PDF parsing: `pdf-parse`  
+Forms: React Hook Form and Zod  
+HTTP client: Axios
 
 ## Project Structure
 
-```
+```text
 src/
-├── app/
-│   ├── api/
-│   │   └── analyze/
-│   │       └── route.ts        ← API route (PDF decode + RAG pipeline)
-│   ├── layout.tsx
-│   └── page.tsx                ← main UI
-├── components/
-│   ├── UploadForm.tsx           ← PDF upload + JD textarea
-│   ├── AnalysisResult.tsx       ← result display
-│   └── ScoreCard.tsx            ← match score with progress bar
-├── hooks/
-│   └── useAnalyze.ts            ← custom hook (fetch + state)
-├── lib/
-│   ├── pinecone.ts              ← Pinecone client (singleton)
-│   ├── embeddings.ts            ← OpenAI embeddings (singleton)
-│   └── rag.ts                   ← full RAG pipeline
-└── types/
-    └── index.ts
+  app/
+    api/analyze/route.ts
+    layout.tsx
+    page.tsx
+  components/
+    UploadForm.tsx
+    AnalysisResult.tsx
+    ScoreCard.tsx
+    ui/
+  hooks/
+    useAnalyze.ts
+  lib/
+    embeddings.ts
+    pinecone.ts
+    prompts.ts
+    rag.ts
+    utils.ts
+  types/
 ```
 
----
+## How The Pipeline Works
 
-## Getting Started
+### 1. Resume parsing
+
+The uploaded PDF is sent as `multipart/form-data` to the API route. The server reads the uploaded file, converts it into a `Buffer`, and extracts text with `pdf-parse`.
+
+### 2. Semantic chunking
+
+The extracted resume text is split by likely resume section headers. If no clear sections are found, the code falls back to paragraph splitting.
+
+### 3. Embedding and storage
+
+Each chunk is converted into an embedding and stored in Pinecone under a unique `sessionId` namespace.
+
+### 4. Retrieval
+
+The job description is expanded into multiple search queries. Each query searches Pinecone in parallel, and duplicate chunks are removed before analysis.
+
+### 5. Analysis
+
+The retrieved chunks and the original job description are passed into a prompt template. The model returns structured JSON containing:
+
+1. `matchScore`
+2. `strongPoints`
+3. `missingSkills`
+4. `suggestions`
+5. `summary`
+
+### 6. Cleanup
+
+After analysis, the session namespace is deleted from Pinecone.
+
+## Setup
 
 ### Prerequisites
-- Node.js 18+
-- OpenAI API key (for embeddings — required regardless of LLM provider)
-- Google Gemini API key OR OpenAI API key (for analysis)
-- Pinecone account with an index created
 
-### Pinecone Index Setup
-Create an index with these exact settings:
-```
-Name:       resume-analyzer
+1. Node.js 20+
+2. Pinecone account and API key
+3. OpenAI API key for embeddings
+4. Gemini API key or OpenAI API key for the final analysis model
+
+### Pinecone index
+
+Create a Pinecone index with these settings:
+
+```text
+Name: resume-analyzer
 Dimensions: 1536
-Metric:     cosine
+Metric: cosine
 ```
 
-### 1. Clone the repo
+### Environment variables
 
-```bash
-git clone https://github.com/codeasj/rag-resume-analyzer.git
-cd rag-resume-analyzer
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Create .env.local
+Create `.env.local` in the project root:
 
 ```env
-# Embeddings — always OpenAI (required)
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-4o-mini
 
-# Pinecone
 PINECONE_API_KEY=your_pinecone_api_key
 PINECONE_INDEX=resume-analyzer
 
-# AI Provider for analysis — switch between gemini and openai
 AI_PROVIDER=gemini
 
-# Gemini
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-### 4. Run
+## Local Development
 
 ```bash
+npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
-
----
+Open `http://localhost:3000`
 
 ## Usage
 
-1. Upload your resume as a PDF (max 5MB, text-based not scanned)
-2. Paste the job description
-3. Click **Analyze Resume**
-4. Wait 10-15 seconds (chunking + embedding + retrieval + generation)
-5. Review your match score, strong points, missing skills, and suggestions
-6. Click **Analyze Another** to start over
+1. Upload a text based PDF resume
+2. Paste the target job description
+3. Click `Analyze Resume`
+4. Review the score and suggestions
 
----
+## Notes
 
-## AI Provider Switching
+The current code uses OpenAI embeddings through LangChain and Pinecone for retrieval. The final analysis model can be switched between Gemini and OpenAI with the `AI_PROVIDER` environment variable.
 
-Switch between Gemini (free tier) and OpenAI by changing one line:
-
-```env
-AI_PROVIDER=gemini   # default, uses Google Gemini
-AI_PROVIDER=openai   # uses OpenAI GPT-4o-mini
-```
-
-Note: Embeddings always use OpenAI regardless of provider — `text-embedding-ada-002` is the industry standard for RAG pipelines.
-
----
-
-## Key Implementation Highlights
-
-- **Semantic chunking** over fixed character splitting — preserves section context for better vector similarity matching
-- **Multi-query retrieval** — LLM generates parallel search queries for higher recall
-- **Session namespacing** — each analysis isolated in its own Pinecone namespace, prevents data mixing
-- **Singleton pattern** for Pinecone and embeddings clients — avoids connection overhead on repeated calls
-- **Fallback chunking** — paragraph-based split if resume has no detectable section headers
-- **Base64 PDF transfer** — file encoded client-side, decoded in API route, no multipart needed in Next.js
-
----
+Resume data is processed for the active session and then cleaned up after analysis. It is not meant to be stored permanently.
 
 ## Author
 
-**Anuj Srivastava**
-- GitHub: [@codeasj](https://github.com/codeasj)
-- LinkedIn: [anujsrivastava0](https://linkedin.com/in/anujsrivastava0)
+Anuj Srivastava  
+GitHub: https://github.com/codeasj  
+LinkedIn: https://linkedin.com/in/anujsrivastava0

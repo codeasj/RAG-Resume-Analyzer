@@ -7,6 +7,6 @@ export interface AnalysisResult {
 }
 
 export interface AnalyzeRequest {
-  resumeText: string;   // this is base64 string 
+  resumeText: File;  
   jobDescription: string;
 }

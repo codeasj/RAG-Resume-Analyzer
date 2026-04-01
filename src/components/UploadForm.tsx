@@ -23,7 +23,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface Props {
-  onSubmit: (resumeText: string, jobDescription: string) => void;
+  onSubmit: (resumeFile: File, jobDescription: string) => void;
   loading: boolean;
 }
 
@@ -58,21 +58,7 @@ export default function UploadForm({ onSubmit, loading }: Props) {
       return;
     }
 
-    // Extract text from PDF on frontend using FormData
-    // Send to a small extract endpoint or send file + jd together
-    const formData = new FormData();
-    formData.append("resume", pdfFile);
-    formData.append("jobDescription", data.jobDescription);
-
-    // Call parent with formData
-    // We'll handle PDF extraction in API route
-    const reader = new FileReader();
-    reader.onload = async () => {
-      // Pass file as base64 to API
-      const base64 = (reader.result as string).split(",")[1];
-      onSubmit(base64, data.jobDescription);
-    };
-    reader.readAsDataURL(pdfFile);
+    onSubmit(pdfFile, data.jobDescription);
   };
 
   return (

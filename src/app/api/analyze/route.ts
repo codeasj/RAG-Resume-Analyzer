@@ -7,28 +7,58 @@ import {
 import { randomUUID } from "crypto";
 import { PDFParse } from "pdf-parse";
 
+const extractTextFromPdf = async (resumeFile: File) => {
+  // Turn resume file into bytes (web/binary)
+  const arrayBuffer = await resumeFile.arrayBuffer();
+  // Convert the ArrayBuffer into a Node.js Buffer (node/binary)
+  const buffer = Buffer.from(arrayBuffer);
+  // Create a PDF parser instance
+  const parser = new PDFParse({ data: buffer });
+  // Extract text from the PDF
+  const pdfData = await parser.getText();
+  // Clean up parser resources after use
+  await parser.destroy();
+  // Return extracted text
+  return pdfData.text;
+};
+
+const runRagPipeline = async (
+  resumeText: string,
+  jobDescription: string,
+  sessionId: string,
+) => {
+  const chunkCount = await chunkAndStoreResume(resumeText, sessionId);
+  console.log(`Stored ${chunkCount} semantic chunks`);
+
+  const analysis = await generateAnalysis(jobDescription, sessionId);
+  console.log(`Analysis complete. Score: ${analysis.matchScore}`);
+
+  await cleanupSession(sessionId);
+
+  return analysis;
+};
+
 export async function POST(request: NextRequest) {
   const sessionId = randomUUID();
 
   try {
-    const body = await request.json();
-    const { resume, jobDescription } = body;
+    const formData = await request.formData();
+    const resume = formData.get("resume");
+    const jobDescription = formData.get("jobDescription");
 
-    if (!resume || !jobDescription?.trim()) {
+    if (
+      !(resume instanceof File) ||
+      typeof jobDescription !== "string" ||
+      !jobDescription.trim()
+    ) {
       return NextResponse.json(
         { message: "Both resume and job description are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Decode base64 PDF → extract text
-    const buffer = Buffer.from(resume, "base64");
-    const parser = new PDFParse({ data: buffer });
-    const pdfData = await parser.getText();
-    await parser.destroy();
-    const resumeText = pdfData.text;
-
-    console.log(`Resume text length: ${resumeText.length} chars`);
+    const resumeText = await extractTextFromPdf(resume);
+   console.log(`Resume text length: ${resumeText.length} chars`);
 
     if (!resumeText?.trim() || resumeText.length < 100) {
       return NextResponse.json(
@@ -36,30 +66,23 @@ export async function POST(request: NextRequest) {
           message:
             "Could not extract text from PDF. Make sure it is not a scanned image.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // RAG Pipeline
-    // 1. Semantic chunk + store
-    const chunkCount = await chunkAndStoreResume(resumeText, sessionId);
-    console.log(`Stored ${chunkCount} semantic chunks`);
-
-    // 2. Multi-query retrieve + analyze
-    const analysis = await generateAnalysis(jobDescription, sessionId);
-    console.log(`Analysis complete. Score: ${analysis.matchScore}`);
-
-    // 3. Cleanup
-    await cleanupSession(sessionId);
+    const analysis = await runRagPipeline(
+      resumeText,
+      jobDescription,
+      sessionId,
+    );
 
     return NextResponse.json({ success: true, analysis });
-
   } catch (error) {
     await cleanupSession(sessionId).catch(() => {});
     console.error("Analysis error:", error);
     return NextResponse.json(
       { message: "Analysis failed. Please try again." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

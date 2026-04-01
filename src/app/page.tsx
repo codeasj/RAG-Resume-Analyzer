@@ -8,8 +8,8 @@ import { BsBriefcase } from "react-icons/bs";
 export default function Home() {
   const { analyze, data, loading, error, reset } = useAnalyze();
 
-  const handleSubmit = (resumeBase64: string, jobDescription: string) => {
-    analyze({ resumeText: resumeBase64, jobDescription });
+  const handleSubmit = (resumeFile: File, jobDescription: string) => {
+    analyze({ resumeFile, jobDescription });
   };
 
   return (

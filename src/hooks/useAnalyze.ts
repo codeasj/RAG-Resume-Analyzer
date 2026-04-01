@@ -8,17 +8,18 @@ export const useAnalyze = () => {
   const [error, setError] = useState<string | null>(null);
 
   const analyze = async (
-    payload: { resumeText: string; jobDescription: string },
+    payload: { resumeFile: File; jobDescription: string },
   ) => {
     try {
       setLoading(true);
       setError(null);
       setData(null);
 
-      const res = await axios.post("/api/analyze", {
-        resume: payload.resumeText,
-        jobDescription: payload.jobDescription,
-      });
+      const formData = new FormData();
+      formData.append("resume", payload.resumeFile);
+      formData.append("jobDescription", payload.jobDescription);
+
+      const res = await axios.post("/api/analyze", formData);
 
       setData(res.data.analysis);
     } catch (err) {
