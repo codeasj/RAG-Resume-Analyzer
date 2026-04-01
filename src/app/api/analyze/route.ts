@@ -5,19 +5,15 @@ import {
   cleanupSession,
 } from "@/lib/rag";
 import { randomUUID } from "crypto";
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 const extractTextFromPdf = async (resumeFile: File) => {
   // Turn resume file into bytes (web/binary)
   const arrayBuffer = await resumeFile.arrayBuffer();
   // Convert the ArrayBuffer into a Node.js Buffer (node/binary)
   const buffer = Buffer.from(arrayBuffer);
-  // Create a PDF parser instance
-  const parser = new PDFParse({ data: buffer });
   // Extract text from the PDF
-  const pdfData = await parser.getText();
-  // Clean up parser resources after use
-  await parser.destroy();
+  const pdfData = await pdfParse(buffer);
   // Return extracted text
   return pdfData.text;
 };

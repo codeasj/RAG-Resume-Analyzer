@@ -35,7 +35,7 @@ Framework: Next.js 16
 Language: TypeScript  
 Styling: Tailwind CSS and shadcn style UI components  
 AI orchestration: LangChain  
-Embeddings: OpenAI `text-embedding-ada-002`  
+Embeddings: OpenAI `text-embedding-3-small`  
 Vector database: Pinecone  
 LLM: Gemini or OpenAI  
 PDF parsing: `pdf-parse`  
