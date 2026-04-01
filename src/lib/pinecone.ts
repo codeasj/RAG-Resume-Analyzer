@@ -12,5 +12,10 @@ export const getPineconeClient = () => {
 };
 
 export const getPineconeIndex = () => {
-  return getPineconeClient().index(process.env.PINECONE_INDEX!);
+  const provider = process.env.EMBEDDING_PROVIDER || "gemini";
+  return getPineconeClient().index(
+    provider === "openai"
+      ? process.env.PINECONE_INDEX_OPENAI!
+      : process.env.PINECONE_INDEX_GEMINI!,
+  );
 };

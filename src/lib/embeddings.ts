@@ -1,13 +1,18 @@
-import {OpenAIEmbeddings} from "@langchain/openai";
+import { Embeddings } from "@langchain/core/embeddings";
+import { createGeminiEmbeddings } from "./gemini-embeddings";
+import { createOpenAIEmbeddings } from "./openai-embeddings";
 
-let embeddings: OpenAIEmbeddings | null = null;
+let embeddings: Embeddings | null = null;
 
 export const getEmbeddings = () => {
-    if(!embeddings) { 
-        embeddings = new OpenAIEmbeddings({
-            apiKey: process.env.OPENAI_API_KEY,
-            modelName: "text-embedding-3-small",
-         })
-    }
-    return embeddings;
-}
+  if (!embeddings) {
+    const provider = process.env.EMBEDDING_PROVIDER || "gemini";
+
+    embeddings =
+      provider === "openai"
+        ? createOpenAIEmbeddings()
+        : createGeminiEmbeddings();
+  }
+
+  return embeddings;
+};

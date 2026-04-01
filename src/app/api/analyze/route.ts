@@ -29,7 +29,7 @@ const runRagPipeline = async (
   const analysis = await generateAnalysis(jobDescription, sessionId);
   console.log(`Analysis complete. Score: ${analysis.matchScore}`);
 
-  await cleanupSession(sessionId);
+  // await cleanupSession(sessionId);
 
   return analysis;
 };

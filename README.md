@@ -2,7 +2,7 @@
 
 RAG Resume Analyzer is a Next.js app that compares a resume PDF against a job description and returns a match score, strong points, missing skills, and resume improvement suggestions.
 
-The app uses semantic resume chunking, OpenAI embeddings, Pinecone retrieval, and a Gemini or OpenAI chat model for the final analysis.
+The app uses semantic resume chunking, provider-switchable OpenAI or Gemini embeddings, Pinecone retrieval, and a Gemini or OpenAI chat model for the final analysis.
 
 ## Live Demo
 
@@ -27,7 +27,7 @@ App: https://rag-resume-analyzer-ashy.vercel.app/
 3. Multi query retrieval for better recall
 4. Pinecone namespacing so one analysis stays isolated from another
 5. Automatic cleanup after analysis
-6. Support for Gemini or OpenAI as the analysis model
+6. Support for OpenAI embeddings or Gemini embeddings, with Gemini or OpenAI for final analysis
 
 ## Tech Stack
 
@@ -35,7 +35,7 @@ Framework: Next.js 16
 Language: TypeScript  
 Styling: Tailwind CSS and shadcn style UI components  
 AI orchestration: LangChain  
-Embeddings: OpenAI `text-embedding-3-small`  
+Embeddings: OpenAI `text-embedding-3-small` and Gemini `gemini-embedding-001`  
 Vector database: Pinecone  
 LLM: Gemini or OpenAI  
 PDF parsing: `pdf-parse`  
@@ -104,16 +104,23 @@ After analysis, the session namespace is deleted from Pinecone.
 
 1. Node.js 20+
 2. Pinecone account and API key
-3. OpenAI API key for embeddings
-4. Gemini API key or OpenAI API key for the final analysis model
+3. Gemini API key or OpenAI API key depending on the embedding and analysis provider you choose
 
 ### Pinecone index
 
-Create a Pinecone index with these settings:
+Create a Pinecone index that matches your embedding provider:
 
 ```text
-Name: resume-analyzer
+OpenAI embeddings
+Model: text-embedding-3-small
+Name: resume-analyzer-1536
 Dimensions: 1536
+Metric: cosine
+
+Gemini embeddings
+Model: gemini-embedding-001
+Name: resume-analyzer-3072
+Dimensions: 3072
 Metric: cosine
 ```
 
@@ -122,13 +129,15 @@ Metric: cosine
 Create `.env.local` in the project root:
 
 ```env
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini
+EMBEDDING_PROVIDER=gemini
+AI_PROVIDER=gemini
 
 PINECONE_API_KEY=your_pinecone_api_key
-PINECONE_INDEX=resume-analyzer
+PINECONE_INDEX_OPENAI=resume-analyzer-1536
+PINECONE_INDEX_GEMINI=resume-analyzer-3072
 
-AI_PROVIDER=gemini
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini
 
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash-lite
@@ -152,7 +161,7 @@ Open `http://localhost:3000`
 
 ## Notes
 
-The current code uses OpenAI embeddings through LangChain and Pinecone for retrieval. The final analysis model can be switched between Gemini and OpenAI with the `AI_PROVIDER` environment variable.
+Embeddings can be switched with `EMBEDDING_PROVIDER`, and the final chat model can be switched with `AI_PROVIDER`. The current code automatically selects `PINECONE_INDEX_OPENAI` or `PINECONE_INDEX_GEMINI` based on the embedding provider.
 
 Resume data is processed for the active session and then cleaned up after analysis. It is not meant to be stored permanently.
 
