@@ -2,7 +2,7 @@
 
 RAG Resume Analyzer is a Next.js app that compares a resume PDF against a job description and returns a match score, strong points, missing skills, and resume improvement suggestions.
 
-The app uses semantic resume chunking, provider-switchable OpenAI or Gemini embeddings, Pinecone retrieval, and a Gemini or OpenAI chat model for the final analysis.
+The app uses semantic resume chunking, LangChain-based embedding and prompt orchestration, provider-switchable OpenAI or Gemini embeddings, Pinecone retrieval, and a Gemini or OpenAI chat model for the final analysis.
 
 ## Live Demo
 
@@ -28,6 +28,7 @@ App: https://rag-resume-analyzer-ashy.vercel.app/
 4. Pinecone namespacing so one analysis stays isolated from another
 5. Automatic cleanup after analysis
 6. Support for OpenAI embeddings or Gemini embeddings, with Gemini or OpenAI for final analysis
+7. LangChain integration for embeddings, vector store operations, prompts, and output parsing
 
 ## Tech Stack
 
@@ -78,15 +79,15 @@ The extracted resume text is split by likely resume section headers. If no clear
 
 ### 3. Embedding and storage
 
-Each chunk is converted into an embedding and stored in Pinecone under a unique `sessionId` namespace.
+Each chunk is converted into an embedding through LangChain and stored in Pinecone under a unique `sessionId` namespace.
 
 ### 4. Retrieval
 
-The job description is expanded into multiple search queries. Each query searches Pinecone in parallel, and duplicate chunks are removed before analysis.
+The job description is expanded into multiple search queries. Each query searches Pinecone in parallel through LangChain, and duplicate chunks are removed before analysis.
 
 ### 5. Analysis
 
-The retrieved chunks and the original job description are passed into a prompt template. The model returns structured JSON containing:
+The retrieved chunks and the original job description are passed into a LangChain prompt template. The model returns structured JSON containing:
 
 1. `matchScore`
 2. `strongPoints`
@@ -151,13 +152,6 @@ npm run dev
 ```
 
 Open `http://localhost:3000`
-
-## Usage
-
-1. Upload a text based PDF resume
-2. Paste the target job description
-3. Click `Analyze Resume`
-4. Review the score and suggestions
 
 ## Notes
 
